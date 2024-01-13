@@ -10,7 +10,7 @@ let idSchedule;
 let user;
 let chatId;
 const strSetup =
-  "Cân nặng của bạn (kog)\nLượng nước mỗi lần uống (ml)\nThời gian nhắc nhở (phút)\nVí dụ: 75kg, 100ml, 40 phút -> 75-100-40";
+  "Cân nặng của bạn (kg)\nLượng nước mỗi lần uống (ml)\nThời gian nhắc nhở (phút)\nVí dụ: 75kg, 100ml, 40 phút -> 75-100-40";
 bot.on("callback_query", function onCallbackQuery(callbackQuery) {
   const action = callbackQuery.data;
   const msg = callbackQuery.message;
@@ -28,13 +28,14 @@ bot.on("callback_query", function onCallbackQuery(callbackQuery) {
       sendNotifi(user);
       break;
     case "sleep":
-      idSchedule.cancel();
+      clearInterval(idSchedule);
       user.drink = false;
       user.drinked = 0;
       saveUser(user);
-      sendFormAction();
-      text = "Kết thúc";
-      bot.editMessageText(text, opts);
+      bot.deleteMessage(msg.chat.id, msg.message_id);
+      sendFormAction(
+        "Đã kết thúc ngày hôm nay, hẹn gặp lại cậu vào ngày mai nhé!"
+      );
       break;
     case "check information":
       bot.sendMessage(
@@ -65,13 +66,14 @@ bot.on("message", (msg) => {
         bot.sendMessage(chatId, strSetup);
         return false;
       }
-      const water = Math.round(weight * 34);
+      const water = Math.round(weight * 37);
       saveUser({ ...user, weight, oneDrink, water, time });
       sendFormAction(`Bạn cần uống ${water}ml nước mỗi ngày`);
     }
   } else {
     users.push({ chatId: chatId, drink: false });
     bot.sendMessage(chatId, strSetup);
+    console.log(`${msg.chat.last_name} ${msg.chat.first_name} đã tham gia`);
     return false;
   }
   switch (message) {
@@ -84,6 +86,7 @@ bot.on("message", (msg) => {
     case "sleep":
       user.drink = false;
       user.drinked = 0;
+      clearInterval(idSchedule);
       saveUser(user);
       break;
     case "check information":
@@ -132,16 +135,16 @@ function sendNotifi(user) {
       callback_data: "sleep",
     },
   ]);
-  idSchedule = schedule.scheduleJob(`*/${user.time} * * * *`, function () {
+  idSchedule = setInterval(function () {
     if (!user.drink) {
-      idSchedule.cancel();
+      clearInterval(idSchedule);
       return false;
     }
     if (user.drinked >= user.water) {
       sendFormAction("Đây là lần nhắc nhở cuối cùng trong hôm nay!!!!");
       user.drink = false;
       saveUser(user);
-      idSchedule.cancel();
+      clearInterval(idSchedule);
       return false;
     }
     sendOptions(`Uống nước bạn ơi, bạn đã uống được ${user.drinked}ml`, [
@@ -152,7 +155,7 @@ function sendNotifi(user) {
     ]);
     user.drinked += parseInt(user.oneDrink);
     saveUser(user);
-  });
+  }, Math.round(user.time * 1000 * 60));
 }
 function sendOptions(
   message,
@@ -173,7 +176,6 @@ function sendOptions(
 }
 function saveUser(funcUser) {
   user = funcUser;
-  console.log(user);
   users = users.map((tempUser) => {
     if (tempUser.chatId === funcUser.chatId) {
       return funcUser;

@@ -1,5 +1,5 @@
 const TelegramBot = require("node-telegram-bot-api");
-const schedule = require("node-schedule");
+const keep_alive = require("./keep_alive.js");
 // replace the value below with the Telegram token you receive from @BotFather
 const token = "6487478889:AAGAhOxJnZfG_ka91TdX3-g8_GhzdmtslnU";
 
